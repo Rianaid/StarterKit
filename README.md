@@ -17,7 +17,7 @@
 
 ## Commands
 
-Only one:  `.kit [Kit Name]` - Give kit with same name. 
+Only one:  `.kit [Kit Name]` - Give kit with same name. Only one set can be obtained by each player.
 
 if you don't specify a name, it gives `startkit`
 
