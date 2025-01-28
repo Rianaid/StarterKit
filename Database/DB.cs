@@ -11,6 +11,7 @@ namespace StarterKit.Database
         public int Amount { get; set; }
         public RecordKit(string name, int amount) { Name = name; Amount = amount; }
     }
+
     internal class DB
     {
         private static readonly string FileDirectory = Path.Combine("BepInEx", "config", MyPluginInfo.PLUGIN_NAME);
@@ -24,19 +25,21 @@ namespace StarterKit.Database
         public static bool EnabledKitCommand = true;
         public static string MessageAlreadyUsedKit = "";
         public static string MessageOnGivenKit = "";
+
         internal static void SaveData()
         {
             File.WriteAllText(PathStarterKits, JsonSerializer.Serialize(DB.StartKits, new JsonSerializerOptions() { WriteIndented = true }));
             File.WriteAllText(PathUsedKits, JsonSerializer.Serialize(DB.UsedKits, new JsonSerializerOptions() { WriteIndented = true }));
             Plugin.Logger.LogWarning("StartKit, UsedKits DB Saved.");
         }
+
         internal static void LoadData()
         {
             if (!Directory.Exists(FileDirectory)) Directory.CreateDirectory(FileDirectory);
-            LoadStarterKit();
             LoadUsedKits();
-            SaveData();
+            LoadStarterKit();
         }
+
         internal static void LoadUsedKits()
         {
             if (!File.Exists(PathUsedKits))
@@ -51,21 +54,68 @@ namespace StarterKit.Database
                 Plugin.Logger.LogWarning("UsedKits DB Populated");
             }
         }
+
         internal static void LoadStarterKit()
         {
             if (!File.Exists(PathStarterKits))
             {
+                // If file doesn't exist, create a new dictionary with default kit
                 DB.StartKits.Clear();
-                DB.StartKits.TryAdd("startkit", new List<RecordKit>() { (new RecordKit("Item_Boots_T09_Dracula_Brute", 1)), (new RecordKit("Item_Chest_T09_Dracula_Brute", 1)), (new RecordKit("Item_Gloves_T09_Dracula_Brute", 1)), (new RecordKit("Item_Legs_T09_Dracula_Brute", 1)) });
-                Plugin.Logger.LogWarning("StartKit DB Created.");
+                DB.StartKits.TryAdd("startkit", new List<RecordKit>() 
+                { 
+                    new RecordKit("Item_Boots_T09_Dracula_Brute", 1), 
+                    new RecordKit("Item_Chest_T09_Dracula_Brute", 1), 
+                    new RecordKit("Item_Gloves_T09_Dracula_Brute", 1), 
+                    new RecordKit("Item_Legs_T09_Dracula_Brute", 1) 
+                });
+                Plugin.Logger.LogWarning("StartKit DB Created with default items.");
+                SaveData(); // Ensure the default kit is saved
             }
             else
             {
-                string json = File.ReadAllText(PathStarterKits);
-                DB.StartKits = JsonSerializer.Deserialize<ConcurrentDictionary<string, List<RecordKit>>>(json);
-                Plugin.Logger.LogWarning("StartKit DB Populated");
+                try
+                {
+                    string json = File.ReadAllText(PathStarterKits);
+                    var loadedKits = JsonSerializer.Deserialize<ConcurrentDictionary<string, List<RecordKit>>>(json);
+                    
+                    // If loaded kits is null or empty, add default kit
+                    if (loadedKits == null || loadedKits.Count == 0)
+                    {
+                        loadedKits = new ConcurrentDictionary<string, List<RecordKit>>();
+                        loadedKits.TryAdd("startkit", new List<RecordKit>() 
+                        { 
+                            new RecordKit("Item_Boots_T09_Dracula_Brute", 1), 
+                            new RecordKit("Item_Chest_T09_Dracula_Brute", 1), 
+                            new RecordKit("Item_Gloves_T09_Dracula_Brute", 1), 
+                            new RecordKit("Item_Legs_T09_Dracula_Brute", 1) 
+                        });
+                        Plugin.Logger.LogWarning("Loaded StartKit is empty. Created default kit.");
+                    }
+                    
+                    // Replace the static StartKits with loaded or default kits
+                    DB.StartKits = loadedKits;
+                    Plugin.Logger.LogWarning("StartKit DB Populated");
+                }
+                catch (JsonException ex)
+                {
+                    // Handle potential JSON deserialization errors
+                    Plugin.Logger.LogError($"Error loading StartKit configuration: {ex.Message}");
+                    
+                    // Fallback to default kit if deserialization fails
+                    DB.StartKits.Clear();
+                    DB.StartKits.TryAdd("startkit", new List<RecordKit>() 
+                    { 
+                        new RecordKit("Item_Boots_T09_Dracula_Brute", 1), 
+                        new RecordKit("Item_Chest_T09_Dracula_Brute", 1), 
+                        new RecordKit("Item_Gloves_T09_Dracula_Brute", 1), 
+                        new RecordKit("Item_Legs_T09_Dracula_Brute", 1) 
+                    });
+                    Plugin.Logger.LogWarning("Fallback to default StartKit due to configuration error.");
+                }
+                
+                // Always save to ensure a valid configuration exists
+                SaveData();
             }
         }
     }
-
 }
